@@ -1,0 +1,220 @@
+# %%
+import torch
+import open_clip
+import os
+import numpy as np
+import faiss
+import json
+from PIL import Image
+import matplotlib.pyplot as plt
+import pytesseract
+import easyocr
+from sentence_transformers import SentenceTransformer
+from transformers import CLIPProcessor, CLIPModel
+from fastapi import FastAPI, UploadFile, File
+import pickle
+import uuid
+
+# %%
+app = FastAPI()
+
+# %%
+#device = "cuda" if torch.cuda.is_available() else "cpu"
+#model_tuple = open_clip.create_model_and_transforms("ViT-B/32", pretrained="openai")
+#model = model_tuple[0]
+#preprocess = model_tuple[1]
+#model.to(device)
+
+model = SentenceTransformer('clip-ViT-B-32')  # CLIP used to convert text (captions) into dense vectors.
+
+clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32") # CLIP's vision and text model from Hugging Face
+clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32", use_fast='True') # Handles resizing, normalizing, and tokenizing images/text before feeding them into the model
+
+# %%
+meme_folder = "memes/"
+meme_database = {}
+dimension = 512
+index = faiss.read_index("meme_index.faiss")  # load previously stored meme embeddings
+
+FAISS_INDEX_PATH = "faiss.index.bin"
+MEME_DB_PATH = "meme_database.pkl"
+FILENAMES_PATH = "filenames.npy"
+
+# %%
+if os.path.exists(FILENAMES_PATH): # load the filenames that correspond to each embedding.
+    filenames = np.load(FILENAMES_PATH).tolist()
+else:
+    filenames = []
+
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Get the absolute path of the memes directory
+memes_directory = os.path.join(os.path.dirname(__file__), "memes")
+
+# Mount static files
+app.mount("/memes", StaticFiles(directory=memes_directory), name="memes")
+
+
+# %%
+filenames
+
+# %%
+def save_index():
+    faiss.write_index(index, FAISS_INDEX_PATH)
+    with open( MEME_DB_PATH, "wb") as f:
+        pickle.dump({"meme_database" : meme_database, "filenames":filenames},f)
+    print("✅ FAISS index and meme database saved!")
+
+def load_index():
+    """Load FAISS index and meme database from disk."""
+    global index, meme_database, filenames
+    
+    if os.path.exists(FAISS_INDEX_PATH) and os.path.exists(MEME_DB_PATH):
+        print("🔄 Loading existing FAISS index and meme database...")
+        index = faiss.read_index(FAISS_INDEX_PATH)
+        with open(MEME_DB_PATH, "rb") as f:
+            data = pickle.load(f)
+            meme_database = data["meme_database"]
+            filenames = data["filenames"]
+        print("✅ FAISS index loaded with", len(meme_database), "memes!")
+        return True
+    return False
+
+# %%
+# Normalize embeddings before adding them to FAISS (needed for cosine similarity)
+def normalize(vectors):
+    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+    return vectors / norms
+
+# %%
+def store_memes():
+    global filenames, index 
+    
+    for file in os.listdir(meme_folder):
+        if file.endswith((".jpg", ".png", ".jpeg")):
+            file_path = os.path.join(meme_folder, file)
+            
+            # **Extract Image Embeddings** 
+            image = Image.open(file_path).convert("RGB")  # Load image
+            inputs = clip_processor(images=image, return_tensors="pt")  # Preprocess image and convert it to a tensor 
+            with torch.no_grad(): #Disables gradient calculations to speed up inference
+                image_embedding = clip_model.get_image_features(**inputs)  # Passes the preprocessed image into CLIP’s vision model and get an image vector
+            image_embedding = image_embedding.squeeze(0).numpy()  # Removes batch dimension from the vector and Converts it into a numpy array
+
+            # **Store Embeddings in Database**  
+            meme_database[file] = {
+                "image_embedding": image_embedding,
+            }
+            filenames.append(file)
+
+    print("✅ Stored", len(meme_database), "memes as dense vectors!")
+
+    # Convert embeddings into FAISS format (Normalize for cosine similarity)
+    vectors = np.array([data["image_embedding"] for data in meme_database.values()], dtype="float32")
+    vectors = normalize(vectors)  # Normalize for cosine similarity
+
+    # FAISS index for cosine similarity (Inner Product)
+    index.add(vectors)  # Add normalized vectors
+
+    print("✅ FAISS index (Cosine Similarity) created with", len(meme_database), "memes!")
+
+    save_index()
+
+
+# %%
+store_memes()
+
+# %%
+def show_meme(meme):
+    image_path = os.path.join(meme_folder, meme)  # Get full path to meme image
+    image = Image.open(image_path)  # Open the image
+    
+    # Display the image with caption
+    plt.figure(figsize=(6, 6))
+    plt.imshow(image)
+    plt.axis("off")  # Hide axes
+    plt.show()
+
+# %%
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all frontend requests (for testing)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/search")
+def search_meme(query: str, threshold: float = 0.5, k: int = 1):
+    query_embedding = model.encode(query).astype("float32")  # Convert the search text to a numerical embedding
+    query_embedding = query_embedding / np.linalg.norm(query_embedding)  # Normalize the embedding
+
+    # FAISS search (returns k nearest memes)
+    similarities, indices = index.search(np.array([query_embedding]), k=k)
+
+    
+    # Extract matches and their scores
+    # Map each FAISS index back to the corresponding meme file.
+
+    results = [
+        {"meme": filenames[idx], "similarity": float(sim)}
+        for idx, sim in zip(indices[0], similarities[0])
+        if sim >= 0  # Avoid invalid indices
+    ]
+
+
+    # If the best match meets the threshold, return it
+    if results and results[0]["similarity"] >= threshold:
+        return {"best_match": results[0], "similar_memes": results[1:]}
+
+    # If no match meets the threshold, return similar memes + upload suggestion
+    return {
+        "message": "No strong match found. Here are some similar memes:",
+        "similar_memes": results,
+        "upload_suggestion": "Can't find what you're looking for? Upload a meme!"
+    }
+
+
+
+# %%
+@app.post("/upload/")
+async def upload_meme(file: UploadFile = File(...)):
+    """Upload a new meme and add it to the search index."""
+
+    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+
+    filepath = os.path.join(meme_folder, unique_filename)
+    
+    # Save the file
+    with open(filepath, "wb") as f:
+        f.write(await file.read())
+
+    # Extract image embedding
+    image = Image.open(filepath).convert("RGB")
+    inputs = clip_processor(images=image, return_tensors="pt")
+    
+    with torch.no_grad():
+        embedding = clip_model.get_image_features(**inputs)
+    
+    embedding = embedding.squeeze(0).numpy()  # Convert to numpy
+
+
+    # Normalize embedding (important for FAISS similarity search)
+    embedding /= np.linalg.norm(embedding)
+    
+     # Update database and FAISS index
+    meme_database[file.filename] = embedding
+    filenames.append(file.filename)
+    index.add(np.array([embedding]).astype("float32"))
+
+    np.save("filenames.npy", np.array(filenames))  # Save updated filenames
+    faiss.write_index(index, "meme_index.faiss")
+    with open(MEME_DB_PATH, "wb") as f:
+        pickle.dump(meme_database, f)
+    
+    return {"message": f"{file.filename} added successfully!"}
