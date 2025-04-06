@@ -4,10 +4,11 @@ __pycache__/
 *.pyd
 
 # Data files
-/memes/               # User-uploaded memes
+/memes/**              # User-uploaded memes
 *.bin                 # FAISS indexes
 *.pkl                 # Database files
 *.npy                 # Numpy arrays
 *.faiss               # Alternative FAISS index
 
 .DS_Store
+
