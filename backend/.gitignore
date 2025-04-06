@@ -10,3 +10,4 @@ __pycache__/
 *.npy                 # Numpy arrays
 *.faiss               # Alternative FAISS index
 
+.DS_Store
