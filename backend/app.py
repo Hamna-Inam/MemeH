@@ -76,14 +76,14 @@ def store_memes():
     global filenames, index 
     
     for file in os.listdir(meme_folder):
-        if file.endswith((".jpg", ".png", ".jpeg")):
+        if file.endswith((".jpg", ".png", ".jpeg",".JPG",".PNG",".JPEG")):
             file_path = os.path.join(meme_folder, file)
             
             # **Extract Image Embeddings** 
             image = Image.open(file_path).convert("RGB")  # Load image
             inputs = clip_processor(images=image, return_tensors="pt")  # Preprocess image and convert it to a tensor 
             with torch.no_grad(): #Disables gradient calculations to speed up inference
-                image_embedding = clip_model.get_image_features(**inputs)  # Passes the preprocessed image into CLIP’s vision model and get an image vector
+                image_embedding = clip_model.get_image_features(**inputs)  # Passes the preprocessed image into CLIP's vision model and get an image vector
             image_embedding = image_embedding.squeeze(0).numpy()  # Removes batch dimension from the vector and Converts it into a numpy array
 
             # **Store Embeddings in Database**  
@@ -173,7 +173,51 @@ async def upload_meme(file: UploadFile = File(...)):
     
     return {"message": f"{file.filename} added successfully!"}
 
-if not load_index():
-    index = faiss.IndexFlatIP(512)
-    if os.path.exists(meme_folder) and os.listdir(meme_folder):
-        store_memes()
+def index_new_memes():
+    """Index only new memes that aren't already in the database"""
+    global filenames, index, meme_database
+    
+    # Get list of all memes in the folder
+    current_memes = set(os.listdir(meme_folder))
+    # Get list of already indexed memes
+    indexed_memes = set(filenames)
+    # Find new memes that aren't indexed yet
+    new_memes = current_memes - indexed_memes
+    
+    if not new_memes:
+        print("No new memes to index!")
+        return
+    
+    print(f"Found {len(new_memes)} new memes to index...")
+    
+    for file in new_memes:
+        if file.endswith((".jpg", ".png", ".jpeg")):
+            file_path = os.path.join(meme_folder, file)
+            
+            # Extract Image Embeddings
+            image = Image.open(file_path).convert("RGB")
+            inputs = clip_processor(images=image, return_tensors="pt")
+            with torch.no_grad():
+                image_embedding = clip_model.get_image_features(**inputs)
+            image_embedding = image_embedding.squeeze(0).numpy()
+            
+            # Normalize embedding
+            image_embedding = image_embedding / np.linalg.norm(image_embedding)
+            
+            # Store in database
+            meme_database[file] = {
+                "image_embedding": image_embedding,
+            }
+            filenames.append(file)
+            
+            # Add to FAISS index
+            index.add(np.array([image_embedding]).astype("float32"))
+            
+            print(f"Indexed: {file}")
+    
+    print(f"Successfully indexed {len(new_memes)} new memes!")
+    save_index()
+
+index = faiss.IndexFlatIP(512)
+store_memes()
+save_index()
