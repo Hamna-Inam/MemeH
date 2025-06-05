@@ -22,7 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-clip_model = SentenceTransformer('clip-ViT-B-32')  # CLIP used to convert text (captions) into dense vectors.
+
+
+clip_model = SentenceTransformer('clip-ViT-L-14')  # CLIP used to convert text (captions) into dense vectors.
 
 meme_folder = "memes/"  # meme folder
 FAISS_INDEX_PATH = "faiss.index.bin" #store FAISS indices
@@ -184,5 +186,4 @@ if not load_index():
     save_index()
 else:
     print("Successfully loaded existing index with", len(filenames), "memes!")
-    # Optionally index any new memes that were added to the folder
     index_new_memes()
