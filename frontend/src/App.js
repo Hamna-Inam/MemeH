@@ -19,24 +19,43 @@ function App() {
     const success = await uploadMeme(file);
     if (success) {
       alert("Meme uploaded successfully!");
-      setFile(null); // Reset file after upload
+      setFile(null);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.heading}>Welcome to Skibidi Rizz Search Engine!</h1>
-        
-        <Search 
-          query={query}
-          setQuery={setQuery}
-          onSearch={handleSearch}
-          onFileChange={(e) => setFile(e.target.files[0])}
-          onUpload={handleUpload}
-        />
-        
-        <Results results={results} />
+    <div>
+      {/* Will Smith image: large, flipped, on right side */}
+      <img 
+        src="/willl.png"
+        alt="Will Smith"
+        style={{
+          position: "fixed",
+          top: "50%",
+          right: "20px",
+          transform: "translateY(-50%) scaleX(-1)", // Flip image
+          height: "700px", // Larger size
+          zIndex: 0,
+          opacity: 0.9,
+          pointerEvents: "none"
+        }}
+      />
+
+      {/* Main App Content */}
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <h1 style={styles.heading}>Welcome to Skibidi Rizz Search Engine!</h1>
+          
+          <Search 
+            query={query}
+            setQuery={setQuery}
+            onSearch={handleSearch}
+            onFileChange={(e) => setFile(e.target.files[0])}
+            onUpload={handleUpload}
+          />
+          
+          <Results results={results} />
+        </div>
       </div>
     </div>
   );
