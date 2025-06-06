@@ -2,12 +2,3 @@ __pycache__/
 .DS_Store
 *.py[cod]
 
-
-
-if not load_index():
-    index = faiss.IndexFlatIP(512)
-    if os.path.exists(meme_folder) and os.listdir(meme_folder):
-        store_memes()
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)

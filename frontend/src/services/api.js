@@ -1,7 +1,7 @@
 const API_BASE_URL = 'http://localhost:8000';
 
 export const searchMemes = async (query) => {
-  const response = await fetch(`${API_BASE_URL}/search?query=${query}&threshold=0.25&k=3`);
+  const response = await fetch(`${API_BASE_URL}/search?query=${query}&threshold=0.25&k=1`);
   return await response.json();
 };
 

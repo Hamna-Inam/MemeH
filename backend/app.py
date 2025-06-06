@@ -68,7 +68,7 @@ def store_memes():
         if file.endswith((".jpg", ".png", ".jpeg", ".JPG", ".PNG", ".JPEG")):
             file_path = os.path.join(meme_folder, file)
             
-            # **Extract Image Embeddings** 
+            # Extract Image Embeddings
             image = Image.open(file_path).convert("RGB")  # Load image
             image_embedding = clip_model.encode(image, convert_to_numpy=True, normalize=True) # Passes the image into CLIP's vision model and get an image vector
             filenames.append(file)
@@ -179,7 +179,6 @@ print(f"Using embedding dimension: {embedding_dim}")
 
 # Initialize FAISS index with correct dimension
 index = faiss.IndexFlatIP(embedding_dim)
-
 if not load_index():
     print("No existing index found. Creating new index")
     store_memes()
