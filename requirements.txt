@@ -1,6 +1,23 @@
-faiss_cpu==1.9.0
-fastapi==0.115.12
-numpy==2.2.6
-Pillow==11.2.1
-sentence_transformers==3.4.1
-torch==2.6.0
+
+torch>=2.2.0
+torchvision>=0.17.0
+
+# NumPy - Flexible 1.x version range
+numpy>=1.24.0,<2.0.0
+
+# FAISS - Install via conda: conda install -c conda-forge faiss-cpu
+
+# Computer Vision & NLP
+sentence-transformers>=2.3.0
+transformers>=4.36.0
+Pillow>=10.0.0
+
+# FastAPI Stack
+fastapi>=0.104.0
+"uvicorn[standard]">=0.24.0
+python-multipart>=0.0.6
+
+# Additional dependencies (automatically installed with above packages)
+safetensors>=0.4.0
+tokenizers>=0.15.0
+huggingface-hub>=0.19.0
