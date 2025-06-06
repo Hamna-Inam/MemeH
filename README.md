@@ -15,7 +15,7 @@ A lightweight AI-powered meme retrieval tool. It uses CLIP and FAISS to let user
 ```bash
 cd backend
 pip install -r requirements.txt
-python app.py
+uvicorn app:app --reload
 ```
 
 ### Frontend
@@ -44,9 +44,8 @@ MemeH/
 ├── backend/
 │   ├── app.py                 # Main Flask application
 │   ├── meme_database.pkl      # Stored meme data
-│   ├── faiss.index.bin        # FAISS index for similarity search
-│   ├── memes/                 # Meme storage directory
-│   └── old_memes/             # Archive of old memes
+│   ├── faiss.index.bin        # FAISS index for similarity search│                
+│   └── memes/             # Meme storage directory
 ├── frontend/                  # React frontend
 │   ├── build/                 # Production build files
 │   ├── node_modules/          # Node.js dependencies
@@ -59,7 +58,7 @@ MemeH/
 ```
 
 ## Tech Stack
-- Flask (you mentioned FastAPI but your file is app.py which suggests Flask)
+- FastAPI
 - SentenceTransformers (`clip-ViT-L-14`)
 - FAISS
 - React (frontend)
