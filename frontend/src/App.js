@@ -24,7 +24,6 @@ function App() {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
-      // Keep the fallback reference that was making it work
       window.currentFile = selectedFile;
     } else {
       setFile(null);
@@ -33,7 +32,6 @@ function App() {
   };
 
   const handleUpload = async () => {
-    // Use the working logic with fallback
     const fileToUpload = file || window.currentFile;
     
     if (!fileToUpload) {
