@@ -166,3 +166,8 @@ if not load_index():
     print("No existing index found. Creating new index")
     store_memes()
     save_index()
+
+# If you add memes to meme folder and want to use those, call store_memes() and save_index() without load_index() just once
+# so comment out the part above and uncomment the lines below (just once)
+# store_memes()
+# save_index()
