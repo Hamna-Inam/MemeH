@@ -66,7 +66,7 @@ MemeH/
 ## Notes
 - First run creates the index from memes in `/memes/`
 - After that, only new memes are indexed on startup
-- You can drop in new images anytime — just refresh the app
+- You can drop in new images by uploading or by making some minor changes in the code (last comments in app.py)
 
 ## Author
 Made by Hamna Inam  
