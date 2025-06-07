@@ -84,21 +84,15 @@ def store_memes():
         print("FAISS index (Cosine Similarity) created with", len(vectors), "memes!")
 
 @app.get("/search")
-def search_meme(query: str, threshold: float = 0.5, k: int = 5):  # Increased k for debugging
+def search_meme(query: str, threshold: float = 0.5, k: int = 1): 
     if index is None or len(filenames) == 0:
         return {"error": "No memes indexed yet. Please upload some memes first."}
 
     # encode and normalize the query
     query_embedding = clip_model.encode(query, convert_to_numpy=True, normalize=True).astype("float32") 
 
-    # FAISS search (return k nearest memes)
+    # FAISS search
     similarities, indices = index.search(np.array([query_embedding]), k=k)
-    
-    # Debug: Print search results
-    print(f"Search query: {query}")
-    print(f"Found indices: {indices[0]}")
-    print(f"Similarities: {similarities[0]}")
-    print(f"Total filenames in DB: {len(filenames)}")
     
     # Extract matches and their scores
     # Map each FAISS index back to the corresponding meme file.
